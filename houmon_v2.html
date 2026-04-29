@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>訪問診療クリニック 営業マップ v1</title>
+<style>
+html,body{margin:0;padding:0;height:100%;width:100%;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;overflow:hidden;background:#fff;}
+
+/* ===== ヘッダー ===== */
+#hdr{
+  position:absolute;top:0;left:0;right:0;height:52px;
+  background:#d4610a;color:#fff;
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+#hdr h1{font-size:14px;font-weight:700;flex:1;}
+#cnt{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 10px;font-size:12px;}
+
+
+/* ===== 地図 ===== */
+#map{position:absolute;top:52px;left:0;right:0;bottom:0;}
+
+/* ===== フィルター（地図上） ===== */
+#filterbar{
+  position:absolute;top:60px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;
+  background:#fff;border-radius:24px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+  padding:5px 8px;z-index:50;
+}
+.fbtn{padding:5px 11px;border-radius:16px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#666;white-space:nowrap;}
+.fbtn.active{background:#d4610a;color:#fff;}
+
+/* ===== 詳細パネル（左サイドバー・PC / 下シート・スマホ） ===== */
+#panel{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  background:#fff;
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -4px 24px rgba(0,0,0,.18);
+  z-index:100;
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+  max-height:78vh;
+}
+#panel.open{transform:translateY(0);}
+
+/* ハンドル */
+#phandle{width:40px;height:5px;background:#ddd;border-radius:3px;margin:12px auto 0;flex-shrink:0;}
+
+/* 事業所ヘッダー */
+#phead{
+  padding:12px 18px 14px;
+  border-bottom:1px solid #f0f0f0;
+  flex-shrink:0;
+  display:flex;align-items:flex-start;gap:10px;
+}
+#phead-info{flex:1;}
+#pname{font-size:16px;font-weight:700;color:#1a2a1a;line-height:1.3;margin-bottom:3px;}
+#paddr{font-size:12px;color:#888;}
+#ptel{font-size:13px;margin-top:4px;}
+#ptel a{color:#1a4a7a;text-decoration:none;font-weight:600;}
+#pclose{
+  width:32px;height:32px;border-radius:50%;background:#f5f5f5;
+  border:none;cursor:pointer;font-size:18px;color:#999;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+/* タブ */
+#tabs{
+  display:flex;border-bottom:1px solid #f0f0f0;
+  flex-shrink:0;
+}
+.tab{
+  flex:1;padding:11px 4px;text-align:center;
+  font-size:13px;font-weight:600;color:#999;
+  border:none;background:transparent;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.tab.active{color:#d4610a;border-bottom-color:#d4610a;}
+
+/* タブコンテンツ */
+#tab-contents{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ルートタブ */
+#tab-route{padding:16px 18px;}
+.route-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
+.rbtn.bike{background:#b7770d;color:#fff;}
+.rbtn{
+  padding:14px 8px;border-radius:12px;border:none;
+  font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:opacity .15s;
+}
+.rbtn:active{opacity:.75;}
+.rbtn .ri{font-size:24px;}
+.rbtn .rt{font-size:12px;}
+.rbtn.car{background:#d4610a;color:#fff;}
+.rbtn.walk{background:#1a5276;color:#fff;}
+.rbtn.trans{background:#6c3483;color:#fff;}
+
+#route-result{
+  margin-top:12px;padding:12px 14px;
+  background:#e8f5ee;border:1px solid #b8ddc8;border-radius:12px;
+  display:none;
+}
+#route-result .rr-title{font-size:13px;font-weight:700;color:#d4610a;margin-bottom:4px;}
+#route-result .rr-info{font-size:14px;color:#333;font-weight:600;}
+#route-result .rr-clear{float:right;border:none;background:transparent;color:#999;cursor:pointer;font-size:14px;}
+
+/* 履歴タブ */
+#tab-history{padding:14px 18px;}
+.visit-empty{text-align:center;padding:30px 0;color:#ccc;font-size:14px;}
+
+.vc{
+  border:1px solid #eee;border-radius:14px;
+  padding:14px 16px;margin-bottom:10px;
+  background:#fafaf9;
+}
+.vc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.vc-date{font-size:13px;font-weight:600;color:#444;}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.badge.good{background:#e8f5ee;color:#d4610a;}
+.badge.neutral{background:#f5f5f0;color:#666;}
+.badge.bad{background:#fdecea;color:#c0392b;}
+.vc-body{font-size:13px;color:#333;line-height:1.7;}
+.vc-body b{color:#1a2a1a;}
+.vc-memo{
+  font-size:12px;color:#666;
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid #eee;line-height:1.7;
+}
+
+.add-visit-btn{
+  width:100%;padding:14px;
+  background:#d4610a;border:none;
+  border-radius:12px;font-size:14px;font-weight:700;
+  color:#fff;cursor:pointer;margin-top:8px;
+  transition:opacity .15s;
+}
+.add-visit-btn:active{opacity:.8;}
+.badge.followup{background:#fff3cd;color:#856404;}
+.vc-actions{display:flex;gap:6px;margin-top:10px;}
+.vc-edit-btn{padding:7px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:#f0f0ee;color:#555;}
+.vc-del-btn{padding:7px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:#fdecea;color:#c0392b;}
+
+/* ===== 営業記録モーダル ===== */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;z-index:300;}
+.ov.open{display:flex;}
+.sheet{
+  background:#fff;border-radius:20px 20px 0 0;
+  width:100%;max-height:92vh;overflow-y:auto;
+}
+.sh{width:40px;height:5px;background:#ddd;border-radius:3px;margin:12px auto;}
+.sh-title{font-size:17px;font-weight:700;padding:4px 18px 16px;color:#1a2a1a;border-bottom:1px solid #f0f0f0;margin-bottom:14px;}
+
+.fr{margin:0 18px 14px;}
+.fr label{display:block;font-size:12px;font-weight:700;color:#888;margin-bottom:6px;letter-spacing:.04em;}
+.fr input,.fr select,.fr textarea{
+  width:100%;padding:13px 14px;
+  border:1.5px solid #e8e8e8;border-radius:12px;
+  font-size:15px;color:#333;background:#fff;outline:none;
+  transition:border-color .15s;
+}
+.fr input:focus,.fr select:focus,.fr textarea:focus{border-color:#d4610a;}
+.fr textarea{resize:none;min-height:90px;line-height:1.6;}
+
+.reaction-btns{display:flex;gap:8px;}
+.rbtn2{
+  flex:1;padding:11px 4px;border-radius:10px;
+  border:2px solid #e8e8e8;background:#fff;
+  font-size:13px;font-weight:700;cursor:pointer;color:#888;
+  transition:all .15s;
+}
+.rbtn2.sel-good{border-color:#d4610a;background:#e8f5ee;color:#d4610a;}
+.rbtn2.sel-neutral{border-color:#999;background:#f5f5f0;color:#555;}
+.rbtn2.sel-bad{border-color:#c0392b;background:#fdecea;color:#c0392b;}
+
+.form-footer{display:flex;gap:10px;padding:14px 18px 8px;}
+.form-footer button{flex:1;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-cancel{background:#f5f5f3;color:#999;}
+.btn-save{background:#d4610a;color:#fff;}
+
+/* ===== ルート情報（地図上） ===== */
+#mapinfo{
+  position:absolute;bottom:10px;left:10px;right:10px;
+  background:#fff;border-radius:14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+  padding:14px 16px;z-index:50;display:none;
+}
+#mapinfo .mi-title{font-size:13px;color:#888;margin-bottom:4px;}
+#mapinfo .mi-info{font-size:16px;font-weight:700;color:#1a2a1a;}
+#mapinfo .mi-close{position:absolute;top:12px;right:14px;border:none;background:transparent;font-size:20px;color:#bbb;cursor:pointer;}
+</style>
+</head>
+<body><div id="pw-screen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#d4610a;display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div style="background:#fff;border-radius:16px;padding:40px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3);min-width:280px;">
+    <div style="font-size:32px;margin-bottom:8px;">🔐</div>
+    <h2 style="margin:0 0 20px;color:#1a2a1a;font-size:18px;">営業マップ</h2>
+    <input id="pw-input" type="password" placeholder="パスワードを入力" 
+      style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px;box-sizing:border-box;margin-bottom:12px;outline:none;"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-error" style="color:#c00;font-size:13px;margin-bottom:8px;display:none;">パスワードが違います</div>
+    <button onclick="checkPw()" style="width:100%;padding:12px;background:#d4610a;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;">ログイン</button>
+  </div>
+</div>
+<script>
+function checkPw(){
+  const v = document.getElementById('pw-input').value;
+  if(v === 'coco0706'){
+    document.getElementById('pw-screen').style.display='none';
+    sessionStorage.setItem('auth','ok');
+  } else {
+    document.getElementById('pw-error').style.display='block';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+  }
+}
+window.onload=function(){
+  if(sessionStorage.getItem('auth')==='ok'){
+    document.getElementById('pw-screen').style.display='none';
+  }
+  document.getElementById('pw-input').focus();
+};
+</script>
+
+<!-- ヘッダー -->
+<div id="hdr">
+  <h1>🏥 訪問診療クリニック 営業マップ</h1>
+  <span id="cnt">0件</span>
+  
+</div>
+
+<!-- 地図 -->
+<div id="map"></div>
+
+<!-- フィルター -->
+<div id="filterbar">
+  <button class="fbtn active" id="f-all" onclick="setFilter('all')">全て</button>
+  <button class="fbtn" id="f-un" onclick="setFilter('unvisited')">🔵 未訪問</button>
+  <button class="fbtn" id="f-vi" onclick="setFilter('visited')">🟢 訪問済</button>
+  <button class="fbtn" id="f-hot" onclick="setFilter('hot')">🔴 有望</button>
+  <button class="fbtn" id="f-fu" onclick="setFilter('followup')">🟡 要フォロー</button>
+  <button class="fbtn" id="f-new" onclick="setFilter('newoffice')">🟣 新規</button>
+</div>
+
+<!-- ルート情報（地図上） -->
+<div id="mapinfo">
+  <button class="mi-close" onclick="clearRoute()">✕</button>
+  <div class="mi-title" id="mi-title"></div>
+  <div class="mi-info" id="mi-info"></div>
+</div>
+
+<!-- 詳細パネル -->
+<div id="panel">
+  <div id="phandle"></div>
+  <div id="phead">
+    <div id="phead-info">
+      <div id="pname"></div>
+      <div id="paddr"></div>
+      <div id="ptel"></div>
+    </div>
+    <button id="pclose" onclick="closePanel()">✕</button>
+  </div>
+  <div id="tabs">
+    <button class="tab active" id="tab-btn-route" onclick="switchTab('route')">🧭 ルート案内</button>
+    <button class="tab" id="tab-btn-history" onclick="switchTab('history')">📋 営業履歴</button>
+    <button class="tab" id="tab-btn-add" onclick="openVisitFromTab()">✏️ 記録追加</button>
+  </div>
+  <div id="tab-contents">
+    <!-- ルートタブ -->
+    <div id="tab-route">
+      <div class="route-grid">
+        <button class="rbtn car" onclick="goRoute('DRIVING')"><span class="ri">🚗</span><span class="rt">車でルート</span></button>
+        
+        <button class="rbtn bike" onclick="goRoute('BICYCLING')"><span class="ri">🚲</span><span class="rt">自転車ルート</span></button>
+      </div>
+      <div id="route-result">
+        <button class="rr-clear" onclick="clearRoute()">✕ クリア</button>
+        <div class="rr-title" id="rr-title"></div>
+        <div class="rr-info" id="rr-info"></div>
+      </div>
+    </div>
+    <!-- 履歴タブ -->
+    <div id="tab-history" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- 営業記録モーダル -->
+<div class="ov" id="vov">
+  <div class="sheet">
+    <div class="sh"></div>
+    <div class="sh-title">✏️ 営業記録を追加</div>
+    <div class="fr"><label>📅 営業日</label><input type="date" id="fd"></div>
+    <div class="fr"><label>👤 担当者名（自社）</label><input type="text" id="fs" placeholder="例：田中 太郎"></div>
+    <div class="fr"><label>🤝 先方 お相手氏名</label><input type="text" id="fc" placeholder="例：山田 花子"></div>
+    <div class="fr"><label>💼 先方 職種</label><input type="text" id="fj" placeholder="例：主任ケアマネジャー"></div>
+    <div class="fr">
+      <label>💬 先方の反応</label>
+      <div class="reaction-btns">
+        <button class="rbtn2" id="rb-good" onclick="selectReaction('good')">😊 良好</button>
+        <button class="rbtn2 sel-neutral" id="rb-neutral" onclick="selectReaction('neutral')">😐 普通</button>
+        <button class="rbtn2" id="rb-bad" onclick="selectReaction('bad')">😞 否定的</button>
+      </div>
+    </div>
+    <div class="fr"><label>📝 営業内容・メモ</label><textarea id="fm" placeholder="先方の反応や次回アクション、特記事項など..."></textarea></div>
+    <div class="form-footer">
+      <button class="btn-cancel" onclick="closeVisit()">キャンセル</button>
+      <button class="btn-save" onclick="saveVisit()">💾 保存する</button>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<script>
+const GKEY='AIzaSyC_JFEj7OBk9PCOf8fCheAn0qgypiJCLcg';
+const ALL=[
+  {id:'h001',name:'しろひげ在宅診療所',addr:'東京都江戸川区東瑞江3-55-11',tel:'03-5666-4675',lat:35.6872,lng:139.8985},
+  {id:'h002',name:'しろひげ在宅診療所想い出',addr:'東京都江戸川区江戸川5-16-115',tel:'03-6808-7590',lat:35.6756,lng:139.8809},
+  {id:'h003',name:'あかり在宅クリニック',addr:'東京都江戸川区東葛西6-1-28',tel:'03-6808-8877',lat:35.6657,lng:139.8732},
+  {id:'h004',name:'げんきらいふクリニック',addr:'東京都江戸川区一之江1-35-12',tel:'03-5879-9277',lat:35.6943,lng:139.8819},
+  {id:'h005',name:'ホームドクターこつこつクリニック',addr:'東京都江戸川区平井3-19-17',tel:'03-5875-6577',lat:35.7041,lng:139.8425},
+  {id:'h006',name:'ICHI Clinic',addr:'東京都江戸川区南小岩2-1-5',tel:'03-6875-1000',lat:35.7165,lng:139.8906},
+  {id:'h007',name:'わたクリニック江戸川',addr:'東京都江戸川区一之江7-88-14',tel:'03-6240-5250',lat:35.6923,lng:139.8838},
+  {id:'h008',name:'にいほりクリニック',addr:'東京都江戸川区新堀1-1-1',tel:'03-3678-3300',lat:35.6957,lng:139.9050},
+  {id:'h009',name:'ほのか在宅診療所',addr:'東京都江戸川区中葛西3-36-4',tel:'03-6808-0055',lat:35.6680,lng:139.8637},
+  {id:'h010',name:'守島医院',addr:'東京都江戸川区西小岩1-16-6',tel:'03-3671-3711',lat:35.7333,lng:139.8802},
+  {id:'h011',name:'小岩医院',addr:'東京都江戸川区東小岩6-21-5',tel:'03-3657-1378',lat:35.7313,lng:139.8793},
+  {id:'h012',name:'香雪医院',addr:'東京都江戸川区篠崎町1-27-12',tel:'03-5664-0777',lat:35.6960,lng:139.9067},
+  {id:'h013',name:'いしホームクリニック',addr:'東京都江戸川区西篠崎2-7-30',tel:'03-5666-1433',lat:35.6897,lng:139.9017},
+  {id:'h014',name:'江戸川ホームケアクリニック',addr:'東京都江戸川区船堀4-3-6',tel:'03-5667-6221',lat:35.6893,lng:139.8775},
+  {id:'h015',name:'平井リハビリテーション整形外科',addr:'東京都江戸川区平井4-11-4',tel:'03-6807-0925',lat:35.7048,lng:139.8440},
+  {id:'h016',name:'岩倉病院',addr:'東京都江戸川区南小岩7-28-4',tel:'03-3659-3215',lat:35.7283,lng:139.8753},
+  {id:'h017',name:'わたクリニック葛飾',addr:'東京都葛飾区青戸5-14-9',tel:'03-6662-8514',lat:35.7434,lng:139.8623},
+  {id:'h018',name:'ふたば在宅クリニック新小岩院',addr:'東京都葛飾区新小岩1-49-10',tel:'03-5879-3530',lat:35.7278,lng:139.8628},
+  {id:'h019',name:'えがおホームクリニック',addr:'東京都葛飾区新宿6-18-19',tel:'03-5876-9271',lat:35.7332,lng:139.8558},
+  {id:'h020',name:'葛飾在宅ケアクリニック',addr:'東京都葛飾区西新小岩1-2-11',tel:'03-5670-9500',lat:35.7312,lng:139.8584},
+  {id:'h021',name:'葛飾南クリニック',addr:'東京都葛飾区西亀有3-16-1',tel:'03-5654-2321',lat:35.7580,lng:139.8650},
+  {id:'h022',name:'葛飾にいじゅくクリニック',addr:'東京都葛飾区金町6-6-1',tel:'03-5876-9260',lat:35.7658,lng:139.8778},
+  {id:'h023',name:'ファミリークリニック新小岩',addr:'東京都葛飾区新小岩1-47-3',tel:'03-5670-3456',lat:35.7275,lng:139.8631},
+  {id:'h024',name:'四つ木クリニック',addr:'東京都葛飾区四つ木1-47-12',tel:'03-5671-3300',lat:35.7390,lng:139.8472},
+  {id:'h025',name:'新小岩わたなべクリニック',addr:'東京都葛飾区新小岩2-3-4',tel:'03-3691-1711',lat:35.7261,lng:139.8620},
+  {id:'h026',name:'阿久津医院',addr:'東京都葛飾区高砂6-12-1',tel:'03-3607-3890',lat:35.7487,lng:139.8720},
+  {id:'h027',name:'ふたば在宅クリニック錦糸町院（墨田区）',addr:'東京都墨田区江東橋4-26-9',tel:'03-6658-8175',lat:35.6967,lng:139.8170},
+  {id:'h028',name:'わかたけクリニック',addr:'東京都江東区東砂7-13-1',tel:'03-5681-4890',lat:35.6742,lng:139.8472},
+  {id:'h029',name:'千石はやし内科クリニック',addr:'東京都江東区富岡2-2-6',tel:'03-5620-0007',lat:35.6706,lng:139.7983},
+  {id:'h030',name:'江東こころのクリニック',addr:'東京都江東区亀戸2-23-1',tel:'03-5875-4152',lat:35.6975,lng:139.8300},
+  {id:'h031',name:'砂町在宅クリニック',addr:'東京都江東区東砂4-10-3',tel:'03-3640-1234',lat:35.6780,lng:139.8390},
+  {id:'h032',name:'ふたば在宅クリニック本八幡院',addr:'千葉県市川市八幡3-3-2',tel:'047-316-2480',lat:35.7283,lng:139.9258},
+  {id:'h033',name:'面野医院',addr:'千葉県市川市相之川4-15-1',tel:'047-359-4187',lat:35.6683,lng:139.9148},
+  {id:'h034',name:'本八幡ホームクリニック',addr:'千葉県市川市八幡2-10-3',tel:'047-312-3456',lat:35.7267,lng:139.9240},
+  {id:'h035',name:'行徳在宅クリニック',addr:'千葉県市川市行徳駅前2-17-1',tel:'047-398-1234',lat:35.6726,lng:139.9068},
+  {id:'h036',name:'浦安在宅クリニック',addr:'千葉県浦安市当代島2-5-1',tel:'047-381-2345',lat:35.6552,lng:139.9052},
+  {id:'h037',name:'南行徳ホームクリニック',addr:'千葉県市川市相之川3-10-1',tel:'047-359-8765',lat:35.6657,lng:139.9120},
+  {id:'h038',name:'ひまわりクリニック',addr:'千葉県浦安市高洲1-2-1 舞浜倶楽部1F',tel:'047-380-6660',lat:35.6408,lng:139.9143},
+];
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwku_6oiNOmTWs2pO4UYGzihkfR1neRVFi_iT-AXrvt6L6ZxC1-cYT2Fsp4jgTB8Rx9/exec';
+let map,offices=[],visits={},markers={},infoWindows={},curId=null,vid=null,curF='all',curReaction='neutral';
+let editIdx=null;
+let ds=null,dr=null,curTab='route';
+
+window.initMap=function(){
+  map=new google.maps.Map(document.getElementById('map'),{
+    center:{lat:35.690,lng:139.868},zoom:12,
+    mapTypeControl:false,streetViewControl:false,fullscreenControl:false,
+  });
+  ds=new google.maps.DirectionsService();
+  dr=new google.maps.DirectionsRenderer({map,polylineOptions:{strokeColor:'#1a6b3c',strokeWeight:5}});
+  geocoder=new google.maps.Geocoder();
+
+  // Google Maps APIロード後にNameLabelクラスを定義
+  NameLabel = class extends google.maps.OverlayView {
+    constructor(position, text, mapObj){
+      super();
+      this.position = position;
+      this.text = text;
+      this.div = null;
+      this.setMap(mapObj);
+    }
+    onAdd(){
+      this.div = document.createElement('div');
+      this.div.style.cssText = 'position:absolute;background:rgba(255,255,255,0.92);color:#1a2a1a;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,0.2);transform:translateX(-50%);display:none;';
+      this.div.textContent = this.text;
+      this.getPanes().floatPane.appendChild(this.div);
+      // 追加後にズームレベルを確認して表示/非表示を決定
+      if(map && map.getZoom() >= LABEL_ZOOM){
+        this.div.style.display = 'block';
+      }
+    }
+    draw(){
+      const proj = this.getProjection();
+      const pos = proj.fromLatLngToDivPixel(this.position);
+      if(this.div && pos){
+        this.div.style.left = pos.x + 'px';
+        this.div.style.top = (pos.y + 18) + 'px';
+      }
+    }
+    onRemove(){
+      if(this.div){ this.div.parentNode.removeChild(this.div); this.div=null; }
+    }
+    hide(){ if(this.div) this.div.style.display='none'; }
+    show(){ if(this.div) this.div.style.display='block'; }
+  };
+
+  map.addListener('click',closePanel);
+  map.addListener('zoom_changed', updateLabels);
+  setTimeout(()=>google.maps.event.trigger(map,'resize'),300);
+  // 起動時にGASから事業所データと営業記録を読み込む
+  setTimeout(()=>{
+    loadOfficesFromGAS();
+  }, 500);
+};
+let geocoder=null;
+
+// localStorageに事業所リストを保存
+function saveOfficesToLocal(){
+  try {
+    localStorage.setItem('houmon_offices', JSON.stringify(offices));
+  } catch(e){}
+}
+
+// localStorageから事業所リストを読み込む
+function loadOfficesFromLocal(){
+  try {
+    const saved = localStorage.getItem('houmon_offices');
+    if(saved){
+      const savedOffices = JSON.parse(saved);
+      if(savedOffices && savedOffices.length > 0){
+        offices = savedOffices;
+        offices.forEach(o => {
+          if(map) {
+            if(o.lat && o.lng){
+              addM(o); // 座標があればそのまま表示
+            } else {
+              addM(o);
+            }
+          }
+        });
+        upCnt();
+        return true;
+      }
+    }
+  } catch(e){}
+  return false;
+}
+
+// GASから事業所データを読み込む
+function loadOfficesFromGAS(){
+  fetch(GAS_URL+'?action=getOffices&service=訪問診療')
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.offices && data.offices.length > 0){
+      data.offices.forEach(o=>{
+        if(!offices.some(x=>x.id===o.id)){
+          const base = ALL.find(x=>x.id===o.id);
+          if(base && base.lat){ o.lat=base.lat; o.lng=base.lng; }
+          offices.push(o);
+          addM(o);
+        }
+      });
+      upCnt();
+    }
+    // 事業所読み込み後に営業記録を読み込む
+    loadVisitsFromGAS();
+  })
+  .catch(e=>{
+    console.log('事業所読み込みエラー:', e);
+    ALL.forEach(o=>{
+      if(!offices.some(x=>x.id===o.id)){
+        offices.push(o);
+        addM(o);
+      }
+    });
+    upCnt();
+    loadVisitsFromGAS();
+  });
+}
+
+// GASから営業記録を読み込む
+function loadVisitsFromGAS(){
+  fetch(GAS_URL+'?action=getAllVisits&service=訪問診療')
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.visits){
+      visits = {};
+      Object.keys(data.visits).forEach(officeId=>{
+        visits[officeId] = data.visits[officeId].map(v=>({
+          rowId: v.rowId,
+          date: v.date,
+          staff: v.staff,
+          contact: v.contact,
+          role: v.role,
+          reaction: v.reaction,
+          memo: v.memo||''
+        }));
+      });
+      // マーカーの色を更新
+      offices.forEach(o=>refreshM(o.id));
+      applyF();
+    }
+  })
+  .catch(e=>console.log('GAS読み込みエラー（オフライン可能性）:', e));
+}
+
+
+
+function isFollowup(id){
+  const v=visits[id]||[];
+  if(!v.length) return false;
+  const last=v[v.length-1];
+  if(last.reaction==='good') return false;
+  const lastDate=new Date(last.date);
+  const now=new Date();
+  const diff=(now-lastDate)/(1000*60*60*24*30);
+  return diff>=3;
+}
+function col(id){
+  const v=visits[id]||[];
+  const o=offices.find(x=>x.id===id);
+  const isNew = o && o.isNew;
+  if(!v.length) return isNew ? {f:'#7d3c98',l:'新'} : {f:'#1a5276',l:'未'};
+  if(v[v.length-1].reaction==='good') return {f:'#c0392b',l:'有'};
+  if(isFollowup(id)) return {f:'#d4a017',l:'↩'};
+  return {f:'#1a6b3c',l:'済'};
+}
+
+function addM(o){
+  if(markers[o.id]) return;
+  if(!o.lat || !o.lng){
+    // 住所からジオコーディング
+    geocoder.geocode({address: o.addr, region:'JP'}, (results, status)=>{
+      if(status==='OK'){
+        o.lat = results[0].geometry.location.lat();
+        o.lng = results[0].geometry.location.lng();
+        placeMarker(o);
+      } else {
+        console.warn('Geocode failed for:', o.name, status);
+      }
+    });
+    return;
+  }
+  placeMarker(o);
+}
+
+const LABEL_ZOOM = 15;
+let NameLabel = null;
+
+function placeMarker(o){
+  if(markers[o.id]) return;
+  const c=col(o.id);
+  const pos = new google.maps.LatLng(o.lat, o.lng);
+  const m=new google.maps.Marker({
+    position:pos, map, title:o.name,
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:c.f,fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5},
+    label:{text:c.l,color:'#fff',fontSize:'10px',fontWeight:'bold'},
+  });
+  m.addListener('click',e=>{e.stop();openPanel(o.id);});
+  markers[o.id]=m;
+
+  // 名称ラベル
+  const lbl = new NameLabel(pos, o.name, map);
+  infoWindows[o.id] = lbl;
+}
+
+function updateLabels(){
+  const zoom = map.getZoom();
+  const show = zoom >= LABEL_ZOOM;
+  offices.forEach(o=>{
+    if(!infoWindows[o.id]) return;
+    if(show){
+      infoWindows[o.id].show();
+    } else {
+      infoWindows[o.id].hide();
+    }
+  });
+}
+
+function refreshM(id){
+  if(!markers[id]){
+    const o=offices.find(x=>x.id===id);
+    if(o) addM(o);
+    return;
+  }
+  const c=col(id);
+  markers[id].setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:c.f,fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5});
+  markers[id].setLabel({text:c.l,color:'#fff',fontSize:'10px',fontWeight:'bold'});
+  // ラベルはNameLabelクラスで管理
+}
+
+function applyF(){
+  offices.forEach(o=>{
+    const v=visits[o.id]||[];
+    let s=true;
+    if(curF==='unvisited') s=v.length===0;
+    else if(curF==='visited') s=v.length>0&&v[v.length-1].reaction!=='good';
+    else if(curF==='hot') s=v.length>0&&v[v.length-1].reaction==='good';
+    else if(curF==='followup') s=isFollowup(o.id);
+    else if(curF==='newoffice') { const of=offices.find(x=>x.id===o.id); s=of&&of.isNew; }
+    if(markers[o.id]) markers[o.id].setVisible(s);
+  });
+}
+
+function setFilter(f){
+  curF=f;
+  ['all','un','vi','hot','fu','new'].forEach(k=>{document.getElementById('f-'+k)&&document.getElementById('f-'+k).classList.remove('active');});
+  const m={all:'all',unvisited:'un',visited:'vi',hot:'hot',followup:'fu',newoffice:'new'};
+  document.getElementById('f-'+(m[f]||f)).classList.add('active');
+  applyF();
+}
+
+function openPanel(id){
+  curId=id;
+  let o=offices.find(x=>x.id===id);
+  if(!o){o=ALL.find(x=>x.id===id);if(o){offices.push(o);geocodeAndAdd(o);upCnt();}}
+  if(!o) return;
+  document.getElementById('pname').textContent=o.name;
+  document.getElementById('paddr').textContent='📍 '+o.addr;
+  document.getElementById('ptel').innerHTML=o.tel?`<a href="tel:${o.tel}">📞 ${o.tel}</a>`:'';
+  switchTab('route');
+  document.getElementById('panel').classList.add('open');
+  if(o.lat&&o.lng) map.panTo({lat:o.lat,lng:o.lng});
+}
+
+function closePanel(){document.getElementById('panel').classList.remove('open');}
+
+let ty=0;
+document.getElementById('panel').addEventListener('touchstart',e=>{ty=e.touches[0].clientY;},{passive:true});
+document.getElementById('panel').addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-ty>80)closePanel();},{passive:true});
+
+function switchTab(t){
+  curTab=t;
+  ['route','history'].forEach(k=>{
+    const btn=document.getElementById('tab-btn-'+k);
+    const el=document.getElementById('tab-'+k);
+    if(btn) btn.classList.toggle('active',k===t);
+    if(el) el.style.display=k===t?'block':'none';
+  });
+  document.getElementById('tab-btn-route').classList.toggle('active',t==='route');
+  document.getElementById('tab-btn-history').classList.toggle('active',t==='history');
+  document.getElementById('tab-btn-add').classList.remove('active');
+  if(t==='history') renderHistory();
+}
+
+function renderHistory(){
+  const o=offices.find(x=>x.id===curId); if(!o) return;
+  const vl=(visits[o.id]||[]).slice(-5).reverse();
+  const el=document.getElementById('tab-history');
+  if(!vl.length){
+    el.innerHTML=`<div class="visit-empty">まだ営業記録がありません<br><br>
+      <button onclick="openVisitFromTab()" style="padding:12px 24px;background:#d4610a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ 最初の記録を追加</button>
+    </div>`;
+    return;
+  }
+  const allV=visits[o.id]||[];
+  let h=vl.map((v,ri)=>{
+    const realIdx=allV.length-1-ri;
+    const bc=v.reaction==='good'?'good':v.reaction==='bad'?'bad':'neutral';
+    const bt=v.reaction==='good'?'😊 良好':v.reaction==='bad'?'😞 否定的':'😐 普通';
+    return `<div class="vc">
+      <div class="vc-top">
+        <div class="vc-date">📅 ${v.date}</div>
+        <span class="badge ${bc}">${bt}</span>
+      </div>
+      <div class="vc-body">
+        👤 担当：<b>${v.staff}</b><br>
+        🤝 先方：<b>${v.contact}</b>（${v.role}）
+      </div>
+      ${v.memo?`<div class="vc-memo">📝 ${v.memo}</div>`:''}
+      <div class="vc-actions">
+        <button class="vc-edit-btn" onclick="editVisit('${o.id}',${realIdx})">✏️ 編集</button>
+        <button class="vc-del-btn" onclick="deleteVisit('${o.id}',${realIdx})">🗑 削除</button>
+      </div>
+    </div>`;
+  }).join('');
+  h+=`<button class="add-visit-btn" onclick="openVisitFromTab()">＋ 営業記録を追加・新規作成</button>`;
+  el.innerHTML=h;
+}
+
+function openVisitFromTab(){
+  openVisit(curId);
+}
+
+// ===== 編集・削除 =====
+function editVisit(id,idx){
+  vid=id; editIdx=idx;
+  const v=visits[id][idx];
+  document.getElementById('fd').value=v.date;
+  document.getElementById('fs').value=v.staff;
+  document.getElementById('fc').value=v.contact;
+  document.getElementById('fj').value=v.role;
+  document.getElementById('fm').value=v.memo||'';
+  selectReaction(v.reaction);
+  document.querySelector('.sh-title').textContent='✏️ 営業記録を編集';
+  document.getElementById('vov').classList.add('open');
+}
+function deleteVisit(id,idx){
+  if(!confirm('この営業記録を削除しますか？')) return;
+  const rowId = visits[id][idx].rowId;
+
+  // GASから削除
+  if(rowId){
+    fetch(GAS_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'deleteVisit',service:'訪問診療',rowId})
+    });
+  }
+
+  visits[id].splice(idx,1);
+  refreshM(id); applyF();
+  renderHistory();
+}
+// ===== ルート =====
+function goRoute(mode){
+  const o=offices.find(x=>x.id===curId); if(!o) return;
+  if(!navigator.geolocation){
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const dest = o.lat && o.lng ? {lat:o.lat,lng:o.lng} : o.addr;
+    ds.route({
+      origin:{lat:pos.coords.latitude,lng:pos.coords.longitude},
+      destination:dest,
+      travelMode:google.maps.TravelMode[mode],
+    },(result,status)=>{
+      if(status==='OK'){
+        dr.setDirections(result);
+        const leg=result.routes[0].legs[0];
+        const modeLabel=mode==='DRIVING'?'🚗 車':mode==='WALKING'?'🚶 徒歩':'🚃 電車';
+        document.getElementById('rr-title').textContent=modeLabel+' '+o.name+'へのルート';
+        document.getElementById('rr-info').textContent='距離：'+leg.distance.text+'　所要時間：'+leg.duration.text;
+        document.getElementById('route-result').style.display='block';
+        map.fitBounds(result.routes[0].bounds);
+        closePanel();
+      } else {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+      }
+    });
+  },()=>{
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+  });
+}
+
+function clearRoute(){
+  dr.setDirections({routes:[]});
+  document.getElementById('route-result').style.display='none';
+}
+
+// ===== 反応選択 =====
+function selectReaction(r){
+  curReaction=r;
+  ['good','neutral','bad'].forEach(k=>{
+    const btn=document.getElementById('rb-'+k);
+    btn.className='rbtn2'+(k===r?' sel-'+k:'');
+  });
+}
+
+// ===== 営業記録 =====
+function openVisit(id){
+  vid=id;
+  document.getElementById('fd').value=new Date().toISOString().slice(0,10);
+  ['fs','fc','fj','fm'].forEach(i=>document.getElementById(i).value='');
+  selectReaction('neutral');
+  document.getElementById('vov').classList.add('open');
+}
+function closeVisit(){document.getElementById('vov').classList.remove('open');}
+function saveVisit(){
+  if(!vid) return;
+  const o=offices.find(x=>x.id===vid);
+  if(!o) return;
+  const rec={
+    date:document.getElementById('fd').value,
+    staff:document.getElementById('fs').value||'未入力',
+    contact:document.getElementById('fc').value||'未入力',
+    role:document.getElementById('fj').value||'未入力',
+    reaction:curReaction,
+    memo:document.getElementById('fm').value,
+  };
+
+  // GASに保存
+  const isEdit = editIdx!==null;
+  const payload = {
+    action: isEdit ? 'editVisit' : 'addVisit',
+    service: '訪問診療',
+    officeId: vid,
+    officeName: o.name,
+    ...rec,
+  };
+  if(isEdit && visits[vid] && visits[vid][editIdx]) {
+    payload.rowId = visits[vid][editIdx].rowId;
+  }
+
+  fetch(GAS_URL, {
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(()=>{
+    // ローカルにも反映
+    if(!visits[vid]) visits[vid]=[];
+    if(isEdit){
+      visits[vid][editIdx]={...rec, rowId:payload.rowId};
+      editIdx=null;
+    } else {
+      rec.rowId = Date.now().toString();
+      visits[vid].push(rec);
+    }
+    document.querySelector('.sh-title').textContent='✏️ 営業記録を追加';
+    closeVisit(); refreshM(vid); applyF();
+    if(curTab==='history') renderHistory();
+  }).catch(()=>{
+    // オフラインでもローカルに保存
+    if(!visits[vid]) visits[vid]=[];
+    if(isEdit){visits[vid][editIdx]=rec;editIdx=null;}
+    else{rec.rowId=Date.now().toString();visits[vid].push(rec);}
+    document.querySelector('.sh-title').textContent='✏️ 営業記録を追加';
+    closeVisit(); refreshM(vid); applyF();
+    if(curTab==='history') renderHistory();
+  });
+}
+
+function upCnt(){document.getElementById('cnt').textContent=offices.length+'件';}
+
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC_JFEj7OBk9PCOf8fCheAn0qgypiJCLcg&language=ja&region=JP&callback=initMap" async defer></script>
+</body>
+</html>

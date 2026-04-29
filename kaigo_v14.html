@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>江戸川区 居宅介護支援 営業マップ v14</title>
+<style>
+html,body{margin:0;padding:0;height:100%;width:100%;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;overflow:hidden;background:#fff;}
+
+/* ===== ヘッダー ===== */
+#hdr{
+  position:absolute;top:0;left:0;right:0;height:52px;
+  background:#1a6b3c;color:#fff;
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+#hdr h1{font-size:14px;font-weight:700;flex:1;}
+#cnt{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 10px;font-size:12px;}
+
+
+/* ===== 地図 ===== */
+#map{position:absolute;top:52px;left:0;right:0;bottom:0;}
+
+/* ===== フィルター（地図上） ===== */
+#filterbar{
+  position:absolute;top:60px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;
+  background:#fff;border-radius:24px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+  padding:5px 8px;z-index:50;
+}
+.fbtn{padding:5px 11px;border-radius:16px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#666;white-space:nowrap;}
+.fbtn.active{background:#1a6b3c;color:#fff;}
+
+/* ===== 詳細パネル（左サイドバー・PC / 下シート・スマホ） ===== */
+#panel{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  background:#fff;
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -4px 24px rgba(0,0,0,.18);
+  z-index:100;
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+  max-height:78vh;
+}
+#panel.open{transform:translateY(0);}
+
+/* ハンドル */
+#phandle{width:40px;height:5px;background:#ddd;border-radius:3px;margin:12px auto 0;flex-shrink:0;}
+
+/* 事業所ヘッダー */
+#phead{
+  padding:12px 18px 14px;
+  border-bottom:1px solid #f0f0f0;
+  flex-shrink:0;
+  display:flex;align-items:flex-start;gap:10px;
+}
+#phead-info{flex:1;}
+#pname{font-size:16px;font-weight:700;color:#1a2a1a;line-height:1.3;margin-bottom:3px;}
+#paddr{font-size:12px;color:#888;}
+#ptel{font-size:13px;margin-top:4px;}
+#ptel a{color:#1a4a7a;text-decoration:none;font-weight:600;}
+#pclose{
+  width:32px;height:32px;border-radius:50%;background:#f5f5f5;
+  border:none;cursor:pointer;font-size:18px;color:#999;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+/* タブ */
+#tabs{
+  display:flex;border-bottom:1px solid #f0f0f0;
+  flex-shrink:0;
+}
+.tab{
+  flex:1;padding:11px 4px;text-align:center;
+  font-size:13px;font-weight:600;color:#999;
+  border:none;background:transparent;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.tab.active{color:#1a6b3c;border-bottom-color:#1a6b3c;}
+
+/* タブコンテンツ */
+#tab-contents{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ルートタブ */
+#tab-route{padding:16px 18px;}
+.route-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
+.rbtn.bike{background:#b7770d;color:#fff;}
+.rbtn{
+  padding:14px 8px;border-radius:12px;border:none;
+  font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:opacity .15s;
+}
+.rbtn:active{opacity:.75;}
+.rbtn .ri{font-size:24px;}
+.rbtn .rt{font-size:12px;}
+.rbtn.car{background:#1a6b3c;color:#fff;}
+.rbtn.walk{background:#1a5276;color:#fff;}
+.rbtn.trans{background:#6c3483;color:#fff;}
+
+#route-result{
+  margin-top:12px;padding:12px 14px;
+  background:#e8f5ee;border:1px solid #b8ddc8;border-radius:12px;
+  display:none;
+}
+#route-result .rr-title{font-size:13px;font-weight:700;color:#1a6b3c;margin-bottom:4px;}
+#route-result .rr-info{font-size:14px;color:#333;font-weight:600;}
+#route-result .rr-clear{float:right;border:none;background:transparent;color:#999;cursor:pointer;font-size:14px;}
+
+/* 履歴タブ */
+#tab-history{padding:14px 18px;}
+.visit-empty{text-align:center;padding:30px 0;color:#ccc;font-size:14px;}
+
+.vc{
+  border:1px solid #eee;border-radius:14px;
+  padding:14px 16px;margin-bottom:10px;
+  background:#fafaf9;
+}
+.vc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.vc-date{font-size:13px;font-weight:600;color:#444;}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.badge.good{background:#e8f5ee;color:#1a6b3c;}
+.badge.neutral{background:#f5f5f0;color:#666;}
+.badge.bad{background:#fdecea;color:#c0392b;}
+.vc-body{font-size:13px;color:#333;line-height:1.7;}
+.vc-body b{color:#1a2a1a;}
+.vc-memo{
+  font-size:12px;color:#666;
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid #eee;line-height:1.7;
+}
+
+.add-visit-btn{
+  width:100%;padding:14px;
+  background:#1a6b3c;border:none;
+  border-radius:12px;font-size:14px;font-weight:700;
+  color:#fff;cursor:pointer;margin-top:8px;
+  transition:opacity .15s;
+}
+.add-visit-btn:active{opacity:.8;}
+.badge.followup{background:#fff3cd;color:#856404;}
+.vc-actions{display:flex;gap:6px;margin-top:10px;}
+.vc-edit-btn{padding:7px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:#f0f0ee;color:#555;}
+.vc-del-btn{padding:7px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:#fdecea;color:#c0392b;}
+
+/* ===== 営業記録モーダル ===== */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;z-index:300;}
+.ov.open{display:flex;}
+.sheet{
+  background:#fff;border-radius:20px 20px 0 0;
+  width:100%;max-height:92vh;overflow-y:auto;
+}
+.sh{width:40px;height:5px;background:#ddd;border-radius:3px;margin:12px auto;}
+.sh-title{font-size:17px;font-weight:700;padding:4px 18px 16px;color:#1a2a1a;border-bottom:1px solid #f0f0f0;margin-bottom:14px;}
+
+.fr{margin:0 18px 14px;}
+.fr label{display:block;font-size:12px;font-weight:700;color:#888;margin-bottom:6px;letter-spacing:.04em;}
+.fr input,.fr select,.fr textarea{
+  width:100%;padding:13px 14px;
+  border:1.5px solid #e8e8e8;border-radius:12px;
+  font-size:15px;color:#333;background:#fff;outline:none;
+  transition:border-color .15s;
+}
+.fr input:focus,.fr select:focus,.fr textarea:focus{border-color:#1a6b3c;}
+.fr textarea{resize:none;min-height:90px;line-height:1.6;}
+
+.reaction-btns{display:flex;gap:8px;}
+.rbtn2{
+  flex:1;padding:11px 4px;border-radius:10px;
+  border:2px solid #e8e8e8;background:#fff;
+  font-size:13px;font-weight:700;cursor:pointer;color:#888;
+  transition:all .15s;
+}
+.rbtn2.sel-good{border-color:#1a6b3c;background:#e8f5ee;color:#1a6b3c;}
+.rbtn2.sel-neutral{border-color:#999;background:#f5f5f0;color:#555;}
+.rbtn2.sel-bad{border-color:#c0392b;background:#fdecea;color:#c0392b;}
+
+.form-footer{display:flex;gap:10px;padding:14px 18px 8px;}
+.form-footer button{flex:1;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-cancel{background:#f5f5f3;color:#999;}
+.btn-save{background:#1a6b3c;color:#fff;}
+
+/* ===== ルート情報（地図上） ===== */
+#mapinfo{
+  position:absolute;bottom:10px;left:10px;right:10px;
+  background:#fff;border-radius:14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+  padding:14px 16px;z-index:50;display:none;
+}
+#mapinfo .mi-title{font-size:13px;color:#888;margin-bottom:4px;}
+#mapinfo .mi-info{font-size:16px;font-weight:700;color:#1a2a1a;}
+#mapinfo .mi-close{position:absolute;top:12px;right:14px;border:none;background:transparent;font-size:20px;color:#bbb;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div id="hdr">
+  <h1>🗺 江戸川区 居宅介護支援 営業マップ</h1>
+  <span id="cnt">0件</span>
+  
+</div>
+
+<!-- 地図 -->
+<div id="map"></div>
+
+<!-- フィルター -->
+<div id="filterbar">
+  <button class="fbtn active" id="f-all" onclick="setFilter('all')">全て</button>
+  <button class="fbtn" id="f-un" onclick="setFilter('unvisited')">🔵 未訪問</button>
+  <button class="fbtn" id="f-vi" onclick="setFilter('visited')">🟢 訪問済</button>
+  <button class="fbtn" id="f-hot" onclick="setFilter('hot')">🔴 有望</button>
+  <button class="fbtn" id="f-fu" onclick="setFilter('followup')">🟡 要フォロー</button>
+  <button class="fbtn" id="f-new" onclick="setFilter('newoffice')">🟣 新規</button>
+</div>
+
+<!-- ルート情報（地図上） -->
+<div id="mapinfo">
+  <button class="mi-close" onclick="clearRoute()">✕</button>
+  <div class="mi-title" id="mi-title"></div>
+  <div class="mi-info" id="mi-info"></div>
+</div>
+
+<!-- 詳細パネル -->
+<div id="panel">
+  <div id="phandle"></div>
+  <div id="phead">
+    <div id="phead-info">
+      <div id="pname"></div>
+      <div id="paddr"></div>
+      <div id="ptel"></div>
+    </div>
+    <button id="pclose" onclick="closePanel()">✕</button>
+  </div>
+  <div id="tabs">
+    <button class="tab active" id="tab-btn-route" onclick="switchTab('route')">🧭 ルート案内</button>
+    <button class="tab" id="tab-btn-history" onclick="switchTab('history')">📋 営業履歴</button>
+    <button class="tab" id="tab-btn-add" onclick="openVisitFromTab()">✏️ 記録追加</button>
+  </div>
+  <div id="tab-contents">
+    <!-- ルートタブ -->
+    <div id="tab-route">
+      <div class="route-grid">
+        <button class="rbtn car" onclick="goRoute('DRIVING')"><span class="ri">🚗</span><span class="rt">車でルート</span></button>
+        
+        <button class="rbtn bike" onclick="goRoute('BICYCLING')"><span class="ri">🚲</span><span class="rt">自転車ルート</span></button>
+      </div>
+      <div id="route-result">
+        <button class="rr-clear" onclick="clearRoute()">✕ クリア</button>
+        <div class="rr-title" id="rr-title"></div>
+        <div class="rr-info" id="rr-info"></div>
+      </div>
+    </div>
+    <!-- 履歴タブ -->
+    <div id="tab-history" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- 営業記録モーダル -->
+<div class="ov" id="vov">
+  <div class="sheet">
+    <div class="sh"></div>
+    <div class="sh-title">✏️ 営業記録を追加</div>
+    <div class="fr"><label>📅 営業日</label><input type="date" id="fd"></div>
+    <div class="fr"><label>👤 担当者名（自社）</label><input type="text" id="fs" placeholder="例：田中 太郎"></div>
+    <div class="fr"><label>🤝 先方 お相手氏名</label><input type="text" id="fc" placeholder="例：山田 花子"></div>
+    <div class="fr"><label>💼 先方 職種</label><input type="text" id="fj" placeholder="例：主任ケアマネジャー"></div>
+    <div class="fr">
+      <label>💬 先方の反応</label>
+      <div class="reaction-btns">
+        <button class="rbtn2" id="rb-good" onclick="selectReaction('good')">😊 良好</button>
+        <button class="rbtn2 sel-neutral" id="rb-neutral" onclick="selectReaction('neutral')">😐 普通</button>
+        <button class="rbtn2" id="rb-bad" onclick="selectReaction('bad')">😞 否定的</button>
+      </div>
+    </div>
+    <div class="fr"><label>📝 営業内容・メモ</label><textarea id="fm" placeholder="先方の反応や次回アクション、特記事項など..."></textarea></div>
+    <div class="form-footer">
+      <button class="btn-cancel" onclick="closeVisit()">キャンセル</button>
+      <button class="btn-save" onclick="saveVisit()">💾 保存する</button>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<script>
+const GKEY='AIzaSyC_JFEj7OBk9PCOf8fCheAn0qgypiJCLcg';
+const ALL=[
+  {id:'k001',name:'ケアステーションきらら船堀',addr:'東京都江戸川区船堀3-14-10 ゆらら船堀',tel:'03-5675-3057',lat:35.680179,lng:139.865841},
+  {id:'k002',name:'いきいきサポートケアプランⅡ',addr:'東京都江戸川区南小岩7-40-29 レジデンス幸101',tel:'03-6806-9425',lat:35.727079,lng:139.885479},
+  {id:'k003',name:'ケアルート',addr:'東京都江戸川区東小松川2-17-16 サンハイツ101',tel:'03-6886-9086',lat:35.695984,lng:139.865706},
+  {id:'k004',name:'居宅介護支援事業所 ゆう',addr:'東京都江戸川区東葛西5-53-4 アミティエ東葛西101',tel:'03-6240-5113',lat:35.663889,lng:139.881027},
+  {id:'k005',name:'指定居宅介護支援事業所相談処江戸川',addr:'東京都江戸川区南小岩2-1-5 第2ミユキコーポ102',tel:'03-5876-7605',lat:35.716572,lng:139.890576},
+  {id:'k006',name:'エール',addr:'東京都江戸川区中葛西3-26-6 セントラルコーポ303',tel:'03-5878-0902',lat:35.666591,lng:139.871708},
+  {id:'k007',name:'うさぎの和',addr:'東京都江戸川区中央4-16-3 CORE・K2 101',tel:'03-5879-3803',lat:35.711873,lng:139.868655},
+  {id:'k008',name:'アリス・ケア',addr:'東京都江戸川区南篠崎町5-2-5',tel:'03-6231-8735',lat:35.690369,lng:139.908962},
+  {id:'k009',name:'ケアステーションきらら瑞江',addr:'東京都江戸川区南篠崎4-5-3 IBMフィオーレビル1階',tel:'03-6638-0171',lat:35.697106,lng:139.900357},
+  {id:'k010',name:'ピースアイランド',addr:'東京都江戸川区平井7丁目10番8号',tel:'03-5631-9163',lat:35.716257,lng:139.835993},
+  {id:'k011',name:'社会福祉法人江東園さわやか相談室',addr:'東京都江戸川区東瑞江1-11-5 ラ・ヴェルフルート103号室',tel:'03-5664-1801',lat:35.688701,lng:139.899561},
+  {id:'k012',name:'ケアフリー介護相談室 指定居宅介護支援事業所',addr:'東京都江戸川区松本2-39-4',tel:'03-5879-3892',lat:35.71917,lng:139.877887},
+  {id:'k013',name:'けいあいライフ',addr:'東京都江戸川区江戸川5丁目21-1 クロス江戸川205',tel:'070-3275-8027',lat:35.674725,lng:139.881304},
+  {id:'k014',name:'悠惺介護福祉相談室',addr:'東京都江戸川区大杉5丁目32-12 カインドコート406',tel:'03-6231-4484',lat:35.711737,lng:139.878866},
+  {id:'k015',name:'にじいろ介護',addr:'東京都江戸川区中央4-25-16 石井ビル2階',tel:'03-5879-3712',lat:35.708705,lng:139.867647},
+  {id:'k016',name:'いきいき介護サービス',addr:'東京都江戸川区中葛西7-17-19 リラ・ポルト1F',tel:'03-5679-6321',lat:35.654843,lng:139.866834},
+  {id:'k017',name:'らいくゆうケア',addr:'東京都江戸川区北篠崎1-8-5',tel:'03-6638-9242',lat:35.72119,lng:139.895277},
+  {id:'k018',name:'東京海上日動みずたま介護ST一之江ケアプランセンター',addr:'東京都江戸川区西一之江3-12-30 シンコーポレーションビル2階',tel:'03-5678-8622',lat:35.692684,lng:139.87578},
+  {id:'k019',name:'ケア あんじゅ',addr:'東京都江戸川区大杉5-20-1',tel:'03-6795-9937',lat:35.708827,lng:139.87772},
+  {id:'k020',name:'ジェロントピア菊華 居宅介護支援相談室',addr:'東京都江戸川区西篠崎1丁目6番地7号',tel:'03-5666-3033',lat:35.716888,lng:139.892105},
+  {id:'k021',name:'生活協同組合パルシステム東京 ケアマネジメントサービス江戸川陽だまり',addr:'東京都江戸川区松江2-10-18',tel:'03-3656-5891',lat:35.699499,lng:139.872068},
+  {id:'k022',name:'はる介護サービス',addr:'東京都江戸川区篠崎町1-15-14 1F',tel:'03-6638-8391',lat:35.708977,lng:139.905325},
+  {id:'k023',name:'スマイルワンケア',addr:'東京都江戸川区中葛西4-3-14 エムケー葛西1階',tel:'03-6808-2003',lat:35.665569,lng:139.865919},
+  {id:'k024',name:'かなで',addr:'東京都江戸川区松島3-41-10 201',tel:'03-5661-7567',lat:35.712165,lng:139.864329},
+  {id:'k025',name:'こといち居宅介護支援事業所',addr:'東京都江戸川区小松川一丁目5番2号 トニワンショッピングセンター1階',tel:'03-6807-0071',lat:35.689031,lng:139.850345},
+  {id:'k026',name:'わかるかいご相談センター江戸川',addr:'東京都江戸川区東瑞江3丁目17番8号 キャッスル瑞江1階',tel:'03-6690-8304',lat:35.689723,lng:139.8943},
+  {id:'k027',name:'ソレイユ居宅介護支援事業所',addr:'東京都江戸川区一之江3-16-23',tel:'03-3652-4389',lat:35.690197,lng:139.884145},
+  {id:'k028',name:'ダイバーシティ篠崎',addr:'東京都江戸川区篠崎町2-1-20 I\'sフラット801号',tel:'03-5879-7803',lat:35.704427,lng:139.905615},
+  {id:'k029',name:'ケア21 小松川',addr:'東京都江戸川区平井1-8-3 ヴェルジェ堀内1階',tel:'03-5628-3721',lat:35.702129,lng:139.84851},
+  {id:'k030',name:'ケアセンター長安',addr:'東京都江戸川区篠崎町4-5-9 長安寮内',tel:'03-5664-2960',lat:35.697559,lng:139.90825},
+  {id:'k031',name:'ここはなケア瑞江',addr:'東京都江戸川区東瑞江1-27-5 メゾンドコスモ602',tel:'03-6638-9155',lat:35.692503,lng:139.898296},
+  {id:'k032',name:'ケア21江戸川',addr:'東京都江戸川区西小岩4-1-20 千成ビル1F',tel:'03-5889-8321',lat:35.735318,lng:139.881074},
+  {id:'k033',name:'居宅介護支援事業所ポピー',addr:'東京都江戸川区西瑞江五丁目7番地35',tel:'03-3869-6920',lat:35.678912,lng:139.880676},
+  {id:'k034',name:'くじら介護サービス',addr:'東京都江戸川区北小岩4-31-14',tel:'03-6310-0024',lat:35.7394,lng:139.895107},
+  {id:'k035',name:'梅の花けあ',addr:'東京都江戸川区江戸川1-29-22',tel:'03-5664-6401',lat:35.688799,lng:139.90739},
+  {id:'k036',name:'テルウェル東日本 東京中央ケアプランセンタ',addr:'東京都江戸川区東葛西2-5-1 川上ビル3F',tel:'03-3877-5100',lat:35.669957,lng:139.874991},
+  {id:'k037',name:'サンクスケア',addr:'東京都江戸川区中央3-7-13 1階',tel:'03-3656-8841',lat:35.712788,lng:139.871909},
+  {id:'k038',name:'ダイバーシティ一之江',addr:'東京都江戸川区一之江4-1-27',tel:'03-5879-4611',lat:35.688097,lng:139.881845},
+  {id:'k039',name:'ダイバーシティ葛西',addr:'東京都江戸川区東葛西6-44-13 マンション・コイムⅡ402号室',tel:'03-6808-1183',lat:35.659387,lng:139.880853},
+  {id:'k040',name:'蜂輪',addr:'東京都江戸川区中葛西2-7-12 Luxury SUNLAKE 108号室',tel:'03-6808-4814',lat:35.672868,lng:139.874364},
+  {id:'k041',name:'デイホームゆりの木江戸川',addr:'東京都江戸川区松島1-27-18',tel:'03-5879-6338',lat:35.706172,lng:139.865344},
+  {id:'k042',name:'トーリツ介護支援 江戸川',addr:'東京都江戸川区中央1丁目5番1号 藤広ビル2階',tel:'03-5663-6077',lat:35.707338,lng:139.867995},
+  {id:'k043',name:'ひなたぼっこ居宅介護ステーション',addr:'東京都江戸川区東小岩5-4-15 大山ビル1階',tel:'03-6657-8338',lat:35.733338,lng:139.886048},
+  {id:'k044',name:'たけのこ介護サービス 平井',addr:'東京都江戸川区平井5-10-7 サンセイハイツ1-B',tel:'03-6657-5892',lat:35.706359,lng:139.840671},
+  {id:'k045',name:'居宅介護支援事業所ほっとホーム',addr:'東京都江戸川区下篠崎町9-12',tel:'03-5879-8221',lat:35.698336,lng:139.912449},
+  {id:'k046',name:'虹の会ケアプラン',addr:'東京都江戸川区南葛西7丁目2番3号',tel:'03-3686-4477',lat:35.647162,lng:139.882263},
+  {id:'k047',name:'でこぽん',addr:'東京都江戸川区北小岩1-10-1 サンライズII-103',tel:'03-5612-4451',lat:35.736198,lng:139.889595},
+  {id:'k048',name:'アースサポート江戸川',addr:'東京都江戸川区船堀6丁目4番8号',tel:'03-5696-9211',lat:35.680021,lng:139.866978},
+  {id:'k049',name:'あっぷるケアプラン江戸川',addr:'東京都江戸川区東葛西五丁目14番6号 カサイNSビル705号室',tel:'03-5676-8221',lat:35.663939,lng:139.875247},
+  {id:'k050',name:'江戸川病院訪問看護ステーション・マックスライフ',addr:'東京都江戸川区東松本2-14-12',tel:'03-3673-4174',lat:35.720082,lng:139.881836},
+  {id:'k051',name:'船堀ホームナースにじ居宅支援',addr:'東京都江戸川区一之江8-8-2 Qスクエア1F',tel:'03-5878-1035',lat:35.684926,lng:139.882427},
+  {id:'k052',name:'しろひげファミリー痛みと幸せに寄りそう介護相談室',addr:'東京都江戸川区東瑞江1-38-42 庄電ビル1号室',tel:'03-6638-7112',lat:35.690319,lng:139.899417},
+  {id:'k053',name:'わだつみケアサービス',addr:'東京都江戸川区瑞江2-22-5 グリーンハウス下鎌田1F-D室',tel:'03-5243-9202',lat:35.695893,lng:139.897865},
+  {id:'k054',name:'医療法人社団森山医会 森山ケアセンター 居宅介護支援事業所江戸川',addr:'東京都江戸川区江戸川5丁目4番23',tel:'03-3689-1251',lat:35.677185,lng:139.883725},
+  {id:'k055',name:'老人保健施設 ビーバス成光苑',addr:'東京都江戸川区北小岩2-7-6',tel:'03-5612-7018',lat:35.741773,lng:139.882913},
+  {id:'k056',name:'暖心苑さわやか相談室 指定居宅介護支援事業所',addr:'東京都江戸川区北葛西4-3-16',tel:'03-3877-0100',lat:35.671636,lng:139.862657},
+  {id:'k057',name:'在宅介護支援センター 清南',addr:'東京都江戸川区北小岩5-34-10',tel:'03-3673-5150',lat:35.739707,lng:139.891642},
+  {id:'k058',name:'居宅介護支援事業所 わとなーる',addr:'東京都江戸川区鹿骨一丁目3番8号',tel:'03-6804-8722',lat:35.707192,lng:139.886462},
+  {id:'k059',name:'くすの木訪問看護ステーション',addr:'東京都江戸川区平井2-24-16 東京育明会ビル2階',tel:'03-5609-6162',lat:35.703674,lng:139.846248},
+  {id:'k060',name:'篠崎介護支援センターサンタ',addr:'東京都江戸川区篠崎町1-37-27 ドミールマツ201',tel:'03-6638-6905',lat:35.71048,lng:139.908386},
+  {id:'k061',name:'株式会社共英瑞江営業所',addr:'東京都江戸川区瑞江2-6-11 プレステージ2Fシェアオフィス1',tel:'03-4334-7635',lat:35.693885,lng:139.896902},
+  {id:'k062',name:'介護屋 みらい',addr:'東京都江戸川区西小岩4-2-11 浩三Ⅱ101',tel:'03-6657-9117',lat:35.736894,lng:139.880339},
+  {id:'k063',name:'野口株式会社 ハーティケア 江戸川',addr:'東京都江戸川区松江7-3-7',tel:'03-5879-9720',lat:35.690209,lng:139.871971},
+  {id:'k064',name:'ぺこら居宅介護支援事業所',addr:'東京都江戸川区北葛西2-11-37 KK RESIDENCE101',tel:'03-6821-2270',lat:35.672704,lng:139.857084},
+  {id:'k065',name:'パークケアえがお',addr:'東京都江戸川区西小岩3-34-12 ペルナ西小岩303',tel:'03-5876-7845',lat:35.736502,lng:139.879645},
+  {id:'k066',name:'Reむすびケア',addr:'東京都江戸川区平井4-13-13 内藤ビル101号室',tel:'03-6772-8878',lat:35.707514,lng:139.844712},
+  {id:'k067',name:'あおぞら介護サービス',addr:'東京都江戸川区船堀6-11-9',tel:'03-5878-3033',lat:35.678854,lng:139.866743},
+  {id:'k068',name:'あやめ介護センター',addr:'東京都江戸川区南小岩7-40-29 レジデンス幸103',tel:'03-5889-6455',lat:35.727079,lng:139.885479},
+  {id:'k069',name:'えだまめケアプラン',addr:'東京都江戸川区南篠崎町2-34-15 G・FⅡ105',tel:'050-1721-7588',lat:35.691969,lng:139.9024},
+  {id:'k070',name:'かんな居宅介護支援事業所',addr:'東京都江戸川区松島4-24-11',tel:'03-6231-5204',lat:35.710886,lng:139.85819},
+  {id:'k071',name:'しろひげ想い出がいっぱい介護相談室',addr:'東京都江戸川区江戸川5-16-115 1階',tel:'03-6808-7590',lat:35.675597,lng:139.880864},
+  {id:'k072',name:'ともいきケア一之江',addr:'東京都江戸川区一之江7-66-1 イーストイン1階',tel:'03-5662-4479',lat:35.683352,lng:139.877029},
+  {id:'k073',name:'なぎさ和楽苑さわやか相談室',addr:'東京都江戸川区西葛西8-1-1',tel:'03-3675-1202',lat:35.655358,lng:139.859067},
+  {id:'k074',name:'なでしこプランセンター',addr:'東京都江戸川区南小岩2-8-2 南小岩スタービル',tel:'03-5876-8228',lat:35.721418,lng:139.887065},
+  {id:'k075',name:'にっこりサービス',addr:'東京都江戸川区北小岩6-15-10 リエス京成小岩駅前202号室',tel:'03-6231-8211',lat:35.742413,lng:139.885001},
+  {id:'k076',name:'はなケアセンター 小松川店',addr:'東京都江戸川区小松川三丁目74番2 101',tel:'03-5627-7912',lat:35.699774,lng:139.850029},
+  {id:'k077',name:'ふれあいプラザラビット',addr:'東京都江戸川区西葛西三丁目22番15号',tel:'03-5675-5740',lat:35.666811,lng:139.859335},
+  {id:'k078',name:'ふれあいプラザラビット瑞江',addr:'東京都江戸川区南篠崎町3-9-3 京葉鈴木ビル1階',tel:'03-5879-7667',lat:35.695599,lng:139.898673},
+  {id:'k079',name:'みどりの郷福楽園居宅介護支援事業所',addr:'東京都江戸川区南葛西4-21-3',tel:'03-5659-3838',lat:35.647621,lng:139.874127},
+  {id:'k080',name:'ゆたか福祉サービス',addr:'東京都江戸川区江戸川3-17',tel:'03-5879-6973',lat:35.684609,lng:139.891852},
+  {id:'k081',name:'アイシェアー船堀',addr:'東京都江戸川区船堀2-18-7 グランビュー船堀101号室',tel:'03-5878-3188',lat:35.682164,lng:139.860636},
+  {id:'k082',name:'アオアクア 居宅介護支援センター 西葛西',addr:'東京都江戸川区西葛西6-22-18 京葉鈴木ビル2階',tel:'03-6808-0101',lat:35.663909,lng:139.862519},
+  {id:'k083',name:'アゼリー江戸川 居宅介護支援事業所',addr:'東京都江戸川区本一色2-13-25',tel:'03-5607-0489',lat:35.719686,lng:139.87317},
+  {id:'k084',name:'ウェルネス・サポートえそら',addr:'東京都江戸川区北小岩3-13-10 アズ小岩レジデンス2F',tel:'03-5876-7256',lat:35.737027,lng:139.891519},
+  {id:'k085',name:'ウェル森永 介護相談室 江戸川',addr:'東京都江戸川区北小岩6丁目39番18号',tel:'03-5622-3338',lat:35.743287,lng:139.886739},
+  {id:'k086',name:'エールハート小岩',addr:'東京都江戸川区西小岩4-13-17 Y\'sフラット',tel:'03-6801-7630',lat:35.7371,lng:139.881886},
+  {id:'k087',name:'ケアサービスひまわり',addr:'東京都江戸川区東葛西5-1-4 篠原ビル3階.B',tel:'03-6808-5013',lat:35.664249,lng:139.873482},
+  {id:'k088',name:'ケアフィールド 本一色',addr:'東京都江戸川区本一色1-20-7',tel:'03-5879-2600',lat:35.718035,lng:139.869783},
+  {id:'k089',name:'ケアプランはな小岩',addr:'東京都江戸川区西小岩1-23-5 コムーネ101',tel:'03-6822-6561',lat:35.73343,lng:139.880603},
+  {id:'k090',name:'ケア・スポット',addr:'東京都江戸川区一之江5-17-7',tel:'03-5879-5367',lat:35.695656,lng:139.881588},
+  {id:'k091',name:'ケア・スポットかさい',addr:'東京都江戸川区中葛西2-20-11 スズナカビル2階',tel:'03-6808-8870',lat:35.670848,lng:139.875054},
+  {id:'k092',name:'ケア・スポットふなぼり',addr:'東京都江戸川区江戸川6-22-3 三角ロイヤルハイツ401',tel:'03-6661-4966',lat:35.676152,lng:139.871369},
+  {id:'k093',name:'スマイリー居宅介護支援事業所',addr:'東京都江戸川区船堀2-15-17 ドウエル船堀202',tel:'03-6825-2821',lat:35.683706,lng:139.861806},
+  {id:'k094',name:'ニコニコファミリーケア',addr:'東京都江戸川区大杉4-7-1',tel:'03-6231-5900',lat:35.710782,lng:139.879598},
+  {id:'k095',name:'プリーズ江戸川',addr:'東京都江戸川区一之江8-3-2 エムエムビル501',tel:'03-5879-5410',lat:35.683994,lng:139.882003},
+  {id:'k096',name:'ライブラリ葛西 居宅介護支援事業所',addr:'東京都江戸川区中葛西6-17-9 クローバーメディカルビル4階',tel:'03-3869-0968',lat:35.660476,lng:139.867947},
+  {id:'k097',name:'ラック平井',addr:'東京都江戸川区平井3-13-10',tel:'03-3682-4459',lat:35.704219,lng:139.84187},
+  {id:'k098',name:'ラック葛西',addr:'東京都江戸川区中葛西4-9-18 i・eビル2階',tel:'03-5674-7152',lat:35.667851,lng:139.867927},
+  {id:'k099',name:'リアンケアプラニング',addr:'東京都江戸川区平井3-23-5 桜コーポ301号室',tel:'03-5875-4153',lat:35.70452,lng:139.843216},
+  {id:'k100',name:'五幸ケアサービス',addr:'東京都江戸川区平井4-9-9 板垣ビル2階',tel:'03-3638-6654',lat:35.706058,lng:139.844832},
+  {id:'k101',name:'介護支援つぐみ',addr:'東京都江戸川区清新町2-2-20-111 バウス西葛西清新町',tel:'03-6456-0972',lat:35.656566,lng:139.855053},
+  {id:'k102',name:'在宅総合支援センター せせらぎ',addr:'東京都江戸川区東小松川2丁目7番1号',tel:'03-5661-3050',lat:35.697927,lng:139.864417},
+  {id:'k103',name:'小岩ホームさわやか相談室',addr:'東京都江戸川区南小岩6-28-12',tel:'03-5694-0111',lat:35.730274,lng:139.88128},
+  {id:'k104',name:'居宅介護支援事業所あい',addr:'東京都江戸川区鹿骨4-3-13',tel:'03-6638-9900',lat:35.712755,lng:139.889162},
+  {id:'k105',name:'居宅介護支援事業所くによし',addr:'東京都江戸川区宇喜田町1311-1 ファミール宇喜田101号室',tel:'03-6808-2261',lat:35.675313,lng:139.864148},
+  {id:'k106',name:'指定居宅介護支援事業所 せんじゅ',addr:'東京都江戸川区北小岩8-21-6 仙寿庵206号室',tel:'03-6458-9061',lat:35.748429,lng:139.885759},
+  {id:'k107',name:'有限会社しんみケアーセンター',addr:'東京都江戸川区西葛西6-15-20 305',tel:'03-5667-6750',lat:35.664036,lng:139.860786},
+  {id:'k108',name:'東京ケア',addr:'東京都江戸川区鹿骨3-18-8',tel:'03-5666-5678',lat:35.716089,lng:139.892},
+  {id:'k109',name:'株式会社 共英',addr:'東京都江戸川区江戸川5-16-51',tel:'03-3687-0336',lat:35.675244,lng:139.880524},
+  {id:'k110',name:'株式会社みなみ北葛西ケアセンター',addr:'東京都江戸川区北葛西2-23-14',tel:'03-6808-2373',lat:35.676,lng:139.859221},
+  {id:'k111',name:'株式会社ケアテックHIRAI',addr:'東京都江戸川区小松川3-9-1 リバーウエストA館108',tel:'03-5858-8847',lat:35.698942,lng:139.850527},
+  {id:'k112',name:'株式会社ケアテックKOIWA',addr:'東京都江戸川区南小岩8-15-13',tel:'03-5622-0407',lat:35.734128,lng:139.884197},
+  {id:'k113',name:'株式会社ノイエすみれケアセンター',addr:'東京都江戸川区中葛西8-23-5 第2宇田川ビル204',tel:'03-5679-1780',lat:35.658096,lng:139.872428},
+  {id:'k114',name:'株式会社ミヤマホームケア指定居宅支援事業所',addr:'東京都江戸川区東小松川1-9-20',tel:'03-5661-6272',lat:35.701157,lng:139.86774},
+  {id:'k115',name:'永仁サービスケアプラン',addr:'東京都江戸川区平井4-1-19',tel:'03-3683-4441',lat:35.704002,lng:139.84721},
+  {id:'k116',name:'江戸川光照苑さわやか相談室指定居宅介護支援事業所',addr:'東京都江戸川区北小岩5-7-2',tel:'03-5612-7193',lat:35.740322,lng:139.887978},
+  {id:'k117',name:'江戸川区医師会訪問看護ステーション',addr:'東京都江戸川区中央4-24-14',tel:'03-3653-6405',lat:35.709967,lng:139.868713},
+  {id:'k118',name:'清心苑さわやか相談室 指定居宅介護支援事業所',addr:'東京都江戸川区西一之江4-9-24',tel:'03-3655-6117',lat:35.695642,lng:139.874036},
+  {id:'k119',name:'瑞江ホームさわやか相談室',addr:'東京都江戸川区瑞江1丁目3番13 瑞勝ビル2階',tel:'03-3679-4152',lat:35.699704,lng:139.89377},
+  {id:'k120',name:'1丁目の広場居宅介護支援事業所',addr:'東京都江戸川区篠崎町1-16-20',tel:'03-5879-7754',lat:35.709344,lng:139.905267},
+  {id:'k121',name:'いわいだ介護相談室',addr:'東京都江戸川区南葛西2-6-5 グレイスアウル102',tel:'03-6808-5115',lat:35.655223,lng:139.873501},
+  {id:'k122',name:'かすみ介護相談室',addr:'東京都江戸川区東葛西9-11-9 ラ・フォーレ1-206',tel:'03-6663-9756',lat:35.658332,lng:139.884111},
+  {id:'k123',name:'かたくり小岩',addr:'東京都江戸川区西小岩5-11-15 吉永ビル101号室',tel:'03-5612-5110',lat:35.736951,lng:139.884303},
+  {id:'k124',name:'くくるケアプランセンター',addr:'東京都江戸川区南小岩7-26-21 ペガサスステーションプラザ小岩611号',tel:'03-5876-7899',lat:35.733327,lng:139.882689},
+  {id:'k125',name:'けあまね処すもも',addr:'東京都江戸川区南小岩5-15-20',tel:'03-6458-9151',lat:35.725537,lng:139.881247},
+  {id:'k126',name:'ふじたか居宅介護支援事業所',addr:'東京都江戸川区南小岩3-10-15',tel:'03-6657-8633',lat:35.725141,lng:139.886336},
+  {id:'k127',name:'ゆずハウス',addr:'東京都江戸川区篠崎町1-21-7',tel:'03-6671-1794',lat:35.709884,lng:139.905885},
+  {id:'k128',name:'ケアセンターききょう',addr:'東京都江戸川区新堀1-38-10 301',tel:'03-6638-7666',lat:35.705808,lng:139.888952},
+  {id:'k129',name:'ケア・プアメリア',addr:'東京都江戸川区東小岩4-12-7',tel:'03-3650-0165',lat:35.729443,lng:139.888455},
+  {id:'k130',name:'ケア赤とんぼ',addr:'東京都江戸川区東小岩5丁目16番6号 ライトハイツ2階',tel:'03-6801-7006',lat:35.731939,lng:139.887616},
+  {id:'k131',name:'シンシアケア 介護相談室',addr:'東京都江戸川区中葛西7-9-21 カーサ・クレールⅥ101号',tel:'050-3138-4890',lat:35.657349,lng:139.865642},
+  {id:'k132',name:'トロールケアサービス',addr:'東京都江戸川区北小岩5-1-9',tel:'03-5612-1306',lat:35.74113,lng:139.88558},
+  {id:'k133',name:'介護相談室 すずらん',addr:'東京都江戸川区西小岩1-29-12 リッジタピオラ302号',tel:'03-4500-4499',lat:35.735279,lng:139.88346},
+  {id:'k134',name:'介護相談室・かすみ葛西',addr:'東京都江戸川区東葛西5-1-2 第二吉田ビル703号室',tel:'03-6663-9815',lat:35.663938,lng:139.87346},
+  {id:'k135',name:'医療法人社団ゆい ケアプランゆい',addr:'東京都江戸川区西小岩1-21-23 ゆいビル2F',tel:'03-3671-5188',lat:35.733835,lng:139.880368},
+  {id:'k136',name:'居宅介護支援事業所 きく',addr:'東京都江戸川区西篠崎1-6-7 2F',tel:'03-5636-7281',lat:35.716888,lng:139.892105},
+  {id:'k137',name:'居宅介護支援事業所 ソラスト船堀',addr:'東京都江戸川区松江5-12-14',tel:'03-5678-8032',lat:35.68884,lng:139.869213},
+  {id:'k138',name:'居宅介護支援事業所 楓',addr:'東京都江戸川区一之江5-22-4',tel:'03-5879-9540',lat:35.694103,lng:139.881319},
+  {id:'k139',name:'心音居宅介護支援事業所',addr:'東京都江戸川区平井3-10-12 平井町ビル1階',tel:'03-5875-0338',lat:35.704288,lng:139.841299},
+  {id:'k140',name:'日本リック居宅介護支援小松川事業所',addr:'東京都江戸川区西小松川町20-5 TKビル6階',tel:'03-5879-2631',lat:35.701769,lng:139.862685},
+  {id:'k141',name:'有限会社 菜の花江戸川',addr:'東京都江戸川区南小岩3-19-2 メゾン南小岩Ⅱ101号室',tel:'03-5622-0036',lat:35.726965,lng:139.886757},
+  {id:'k142',name:'株式会社フラワー居宅介護支援事業所',addr:'東京都江戸川区平井1-9-6 T&K第一ビル201',tel:'03-5609-5517',lat:35.701674,lng:139.848869},
+  {id:'k143',name:'特定非営利活動法人はなみずき',addr:'東京都江戸川区船堀3-4-8 101',tel:'03-5679-0966',lat:35.68224,lng:139.863956},
+  {id:'k144',name:'老人保健施設ヴィット 介護相談部',addr:'東京都江戸川区船堀3-10-7',tel:'03-5696-3363',lat:35.681611,lng:139.864847},
+  {id:'k145',name:'虹の丘ケアセンター',addr:'東京都江戸川区西葛西4-2-47 西葛西スカイハイツ902号室',tel:'03-3686-0897',lat:35.668727,lng:139.861171},
+];
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwku_6oiNOmTWs2pO4UYGzihkfR1neRVFi_iT-AXrvt6L6ZxC1-cYT2Fsp4jgTB8Rx9/exec';
+let map,offices=[],visits={},markers={},infoWindows={},curId=null,vid=null,curF='all',curReaction='neutral';
+let editIdx=null;
+let ds=null,dr=null,curTab='route';
+
+window.initMap=function(){
+  map=new google.maps.Map(document.getElementById('map'),{
+    center:{lat:35.690,lng:139.868},zoom:13,
+    mapTypeControl:false,streetViewControl:false,fullscreenControl:false,
+  });
+  ds=new google.maps.DirectionsService();
+  dr=new google.maps.DirectionsRenderer({map,polylineOptions:{strokeColor:'#1a6b3c',strokeWeight:5}});
+  geocoder=new google.maps.Geocoder();
+
+  // Google Maps APIロード後にNameLabelクラスを定義
+  NameLabel = class extends google.maps.OverlayView {
+    constructor(position, text, mapObj){
+      super();
+      this.position = position;
+      this.text = text;
+      this.div = null;
+      this.setMap(mapObj);
+    }
+    onAdd(){
+      this.div = document.createElement('div');
+      this.div.style.cssText = 'position:absolute;background:rgba(255,255,255,0.92);color:#1a2a1a;font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,0.2);transform:translateX(-50%);display:none;';
+      this.div.textContent = this.text;
+      this.getPanes().floatPane.appendChild(this.div);
+      // 追加後にズームレベルを確認して表示/非表示を決定
+      if(map && map.getZoom() >= LABEL_ZOOM){
+        this.div.style.display = 'block';
+      }
+    }
+    draw(){
+      const proj = this.getProjection();
+      const pos = proj.fromLatLngToDivPixel(this.position);
+      if(this.div && pos){
+        this.div.style.left = pos.x + 'px';
+        this.div.style.top = (pos.y + 18) + 'px';
+      }
+    }
+    onRemove(){
+      if(this.div){ this.div.parentNode.removeChild(this.div); this.div=null; }
+    }
+    hide(){ if(this.div) this.div.style.display='none'; }
+    show(){ if(this.div) this.div.style.display='block'; }
+  };
+
+  map.addListener('click',closePanel);
+  map.addListener('zoom_changed', updateLabels);
+  setTimeout(()=>google.maps.event.trigger(map,'resize'),300);
+  // 起動時にGASから事業所データと営業記録を読み込む
+  setTimeout(()=>{
+    loadOfficesFromGAS();
+  }, 500);
+};
+let geocoder=null;
+
+// localStorageに事業所リストを保存
+function saveOfficesToLocal(){
+  try {
+    localStorage.setItem('kaigo_offices', JSON.stringify(offices));
+  } catch(e){}
+}
+
+// localStorageから事業所リストを読み込む
+function loadOfficesFromLocal(){
+  try {
+    const saved = localStorage.getItem('kaigo_offices');
+    if(saved){
+      const savedOffices = JSON.parse(saved);
+      if(savedOffices && savedOffices.length > 0){
+        offices = savedOffices;
+        offices.forEach(o => {
+          if(map) {
+            if(o.lat && o.lng){
+              addM(o); // 座標があればそのまま表示
+            } else {
+              addM(o);
+            }
+          }
+        });
+        upCnt();
+        return true;
+      }
+    }
+  } catch(e){}
+  return false;
+}
+
+// GASから事業所データを読み込む
+function loadOfficesFromGAS(){
+  fetch(GAS_URL+'?action=getOffices&service=居宅介護支援')
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.offices && data.offices.length > 0){
+      data.offices.forEach(o=>{
+        if(!offices.some(x=>x.id===o.id)){
+          const base = ALL.find(x=>x.id===o.id);
+          if(base && base.lat){ o.lat=base.lat; o.lng=base.lng; }
+          offices.push(o);
+          addM(o);
+        }
+      });
+      upCnt();
+    }
+    // 事業所読み込み後に営業記録を読み込む
+    loadVisitsFromGAS();
+  })
+  .catch(e=>{
+    console.log('事業所読み込みエラー:', e);
+    ALL.forEach(o=>{
+      if(!offices.some(x=>x.id===o.id)){
+        offices.push(o);
+        addM(o);
+      }
+    });
+    upCnt();
+    loadVisitsFromGAS();
+  });
+}
+
+// GASから営業記録を読み込む
+function loadVisitsFromGAS(){
+  fetch(GAS_URL+'?action=getAllVisits&service=居宅介護支援')
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.visits){
+      visits = {};
+      Object.keys(data.visits).forEach(officeId=>{
+        visits[officeId] = data.visits[officeId].map(v=>({
+          rowId: v.rowId,
+          date: v.date,
+          staff: v.staff,
+          contact: v.contact,
+          role: v.role,
+          reaction: v.reaction,
+          memo: v.memo||''
+        }));
+      });
+      // マーカーの色を更新
+      offices.forEach(o=>refreshM(o.id));
+      applyF();
+    }
+  })
+  .catch(e=>console.log('GAS読み込みエラー（オフライン可能性）:', e));
+}
+
+
+
+function isFollowup(id){
+  const v=visits[id]||[];
+  if(!v.length) return false;
+  const last=v[v.length-1];
+  if(last.reaction==='good') return false;
+  const lastDate=new Date(last.date);
+  const now=new Date();
+  const diff=(now-lastDate)/(1000*60*60*24*30);
+  return diff>=3;
+}
+function col(id){
+  const v=visits[id]||[];
+  const o=offices.find(x=>x.id===id);
+  const isNew = o && o.isNew;
+  if(!v.length) return isNew ? {f:'#7d3c98',l:'新'} : {f:'#1a5276',l:'未'};
+  if(v[v.length-1].reaction==='good') return {f:'#c0392b',l:'有'};
+  if(isFollowup(id)) return {f:'#d4a017',l:'↩'};
+  return {f:'#1a6b3c',l:'済'};
+}
+
+function addM(o){
+  if(markers[o.id]) return;
+  if(!o.lat || !o.lng){
+    // 住所からジオコーディング
+    geocoder.geocode({address: o.addr, region:'JP'}, (results, status)=>{
+      if(status==='OK'){
+        o.lat = results[0].geometry.location.lat();
+        o.lng = results[0].geometry.location.lng();
+        placeMarker(o);
+      } else {
+        console.warn('Geocode failed for:', o.name, status);
+      }
+    });
+    return;
+  }
+  placeMarker(o);
+}
+
+const LABEL_ZOOM = 15;
+let NameLabel = null;
+
+function placeMarker(o){
+  if(markers[o.id]) return;
+  const c=col(o.id);
+  const pos = new google.maps.LatLng(o.lat, o.lng);
+  const m=new google.maps.Marker({
+    position:pos, map, title:o.name,
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:c.f,fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5},
+    label:{text:c.l,color:'#fff',fontSize:'10px',fontWeight:'bold'},
+  });
+  m.addListener('click',e=>{e.stop();openPanel(o.id);});
+  markers[o.id]=m;
+
+  // 名称ラベル
+  const lbl = new NameLabel(pos, o.name, map);
+  infoWindows[o.id] = lbl;
+}
+
+function updateLabels(){
+  const zoom = map.getZoom();
+  const show = zoom >= LABEL_ZOOM;
+  offices.forEach(o=>{
+    if(!infoWindows[o.id]) return;
+    if(show){
+      infoWindows[o.id].show();
+    } else {
+      infoWindows[o.id].hide();
+    }
+  });
+}
+
+function refreshM(id){
+  if(!markers[id]){
+    const o=offices.find(x=>x.id===id);
+    if(o) addM(o);
+    return;
+  }
+  const c=col(id);
+  markers[id].setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:c.f,fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5});
+  markers[id].setLabel({text:c.l,color:'#fff',fontSize:'10px',fontWeight:'bold'});
+  // ラベルはNameLabelクラスで管理
+}
+
+function applyF(){
+  offices.forEach(o=>{
+    const v=visits[o.id]||[];
+    let s=true;
+    if(curF==='unvisited') s=v.length===0;
+    else if(curF==='visited') s=v.length>0&&v[v.length-1].reaction!=='good';
+    else if(curF==='hot') s=v.length>0&&v[v.length-1].reaction==='good';
+    else if(curF==='followup') s=isFollowup(o.id);
+    else if(curF==='newoffice') { const of=offices.find(x=>x.id===o.id); s=of&&of.isNew; }
+    if(markers[o.id]) markers[o.id].setVisible(s);
+  });
+}
+
+function setFilter(f){
+  curF=f;
+  ['all','un','vi','hot','fu','new'].forEach(k=>{document.getElementById('f-'+k)&&document.getElementById('f-'+k).classList.remove('active');});
+  const m={all:'all',unvisited:'un',visited:'vi',hot:'hot',followup:'fu',newoffice:'new'};
+  document.getElementById('f-'+(m[f]||f)).classList.add('active');
+  applyF();
+}
+
+function openPanel(id){
+  curId=id;
+  let o=offices.find(x=>x.id===id);
+  if(!o){o=ALL.find(x=>x.id===id);if(o){offices.push(o);geocodeAndAdd(o);upCnt();}}
+  if(!o) return;
+  document.getElementById('pname').textContent=o.name;
+  document.getElementById('paddr').textContent='📍 '+o.addr;
+  document.getElementById('ptel').innerHTML=o.tel?`<a href="tel:${o.tel}">📞 ${o.tel}</a>`:'';
+  switchTab('route');
+  document.getElementById('panel').classList.add('open');
+  if(o.lat&&o.lng) map.panTo({lat:o.lat,lng:o.lng});
+}
+
+function closePanel(){document.getElementById('panel').classList.remove('open');}
+
+let ty=0;
+document.getElementById('panel').addEventListener('touchstart',e=>{ty=e.touches[0].clientY;},{passive:true});
+document.getElementById('panel').addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-ty>80)closePanel();},{passive:true});
+
+function switchTab(t){
+  curTab=t;
+  ['route','history'].forEach(k=>{
+    const btn=document.getElementById('tab-btn-'+k);
+    const el=document.getElementById('tab-'+k);
+    if(btn) btn.classList.toggle('active',k===t);
+    if(el) el.style.display=k===t?'block':'none';
+  });
+  document.getElementById('tab-btn-route').classList.toggle('active',t==='route');
+  document.getElementById('tab-btn-history').classList.toggle('active',t==='history');
+  document.getElementById('tab-btn-add').classList.remove('active');
+  if(t==='history') renderHistory();
+}
+
+function renderHistory(){
+  const o=offices.find(x=>x.id===curId); if(!o) return;
+  const vl=(visits[o.id]||[]).slice(-5).reverse();
+  const el=document.getElementById('tab-history');
+  if(!vl.length){
+    el.innerHTML=`<div class="visit-empty">まだ営業記録がありません<br><br>
+      <button onclick="openVisitFromTab()" style="padding:12px 24px;background:#1a6b3c;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ 最初の記録を追加</button>
+    </div>`;
+    return;
+  }
+  const allV=visits[o.id]||[];
+  let h=vl.map((v,ri)=>{
+    const realIdx=allV.length-1-ri;
+    const bc=v.reaction==='good'?'good':v.reaction==='bad'?'bad':'neutral';
+    const bt=v.reaction==='good'?'😊 良好':v.reaction==='bad'?'😞 否定的':'😐 普通';
+    return `<div class="vc">
+      <div class="vc-top">
+        <div class="vc-date">📅 ${v.date}</div>
+        <span class="badge ${bc}">${bt}</span>
+      </div>
+      <div class="vc-body">
+        👤 担当：<b>${v.staff}</b><br>
+        🤝 先方：<b>${v.contact}</b>（${v.role}）
+      </div>
+      ${v.memo?`<div class="vc-memo">📝 ${v.memo}</div>`:''}
+      <div class="vc-actions">
+        <button class="vc-edit-btn" onclick="editVisit('${o.id}',${realIdx})">✏️ 編集</button>
+        <button class="vc-del-btn" onclick="deleteVisit('${o.id}',${realIdx})">🗑 削除</button>
+      </div>
+    </div>`;
+  }).join('');
+  h+=`<button class="add-visit-btn" onclick="openVisitFromTab()">＋ 営業記録を追加・新規作成</button>`;
+  el.innerHTML=h;
+}
+
+function openVisitFromTab(){
+  openVisit(curId);
+}
+
+// ===== 編集・削除 =====
+function editVisit(id,idx){
+  vid=id; editIdx=idx;
+  const v=visits[id][idx];
+  document.getElementById('fd').value=v.date;
+  document.getElementById('fs').value=v.staff;
+  document.getElementById('fc').value=v.contact;
+  document.getElementById('fj').value=v.role;
+  document.getElementById('fm').value=v.memo||'';
+  selectReaction(v.reaction);
+  document.querySelector('.sh-title').textContent='✏️ 営業記録を編集';
+  document.getElementById('vov').classList.add('open');
+}
+function deleteVisit(id,idx){
+  if(!confirm('この営業記録を削除しますか？')) return;
+  const rowId = visits[id][idx].rowId;
+
+  // GASから削除
+  if(rowId){
+    fetch(GAS_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'deleteVisit',service:'居宅介護支援',rowId})
+    });
+  }
+
+  visits[id].splice(idx,1);
+  refreshM(id); applyF();
+  renderHistory();
+}
+// ===== ルート =====
+function goRoute(mode){
+  const o=offices.find(x=>x.id===curId); if(!o) return;
+  if(!navigator.geolocation){
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const dest = o.lat && o.lng ? {lat:o.lat,lng:o.lng} : o.addr;
+    ds.route({
+      origin:{lat:pos.coords.latitude,lng:pos.coords.longitude},
+      destination:dest,
+      travelMode:google.maps.TravelMode[mode],
+    },(result,status)=>{
+      if(status==='OK'){
+        dr.setDirections(result);
+        const leg=result.routes[0].legs[0];
+        const modeLabel=mode==='DRIVING'?'🚗 車':mode==='WALKING'?'🚶 徒歩':'🚃 電車';
+        document.getElementById('rr-title').textContent=modeLabel+' '+o.name+'へのルート';
+        document.getElementById('rr-info').textContent='距離：'+leg.distance.text+'　所要時間：'+leg.duration.text;
+        document.getElementById('route-result').style.display='block';
+        map.fitBounds(result.routes[0].bounds);
+        closePanel();
+      } else {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+      }
+    });
+  },()=>{
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.addr)}&travelmode=${mode.toLowerCase()}`,'_blank');
+  });
+}
+
+function clearRoute(){
+  dr.setDirections({routes:[]});
+  document.getElementById('route-result').style.display='none';
+}
+
+// ===== 反応選択 =====
+function selectReaction(r){
+  curReaction=r;
+  ['good','neutral','bad'].forEach(k=>{
+    const btn=document.getElementById('rb-'+k);
+    btn.className='rbtn2'+(k===r?' sel-'+k:'');
+  });
+}
+
+// ===== 営業記録 =====
+function openVisit(id){
+  vid=id;
+  document.getElementById('fd').value=new Date().toISOString().slice(0,10);
+  ['fs','fc','fj','fm'].forEach(i=>document.getElementById(i).value='');
+  selectReaction('neutral');
+  document.getElementById('vov').classList.add('open');
+}
+function closeVisit(){document.getElementById('vov').classList.remove('open');}
+function saveVisit(){
+  if(!vid) return;
+  const o=offices.find(x=>x.id===vid);
+  if(!o) return;
+  const rec={
+    date:document.getElementById('fd').value,
+    staff:document.getElementById('fs').value||'未入力',
+    contact:document.getElementById('fc').value||'未入力',
+    role:document.getElementById('fj').value||'未入力',
+    reaction:curReaction,
+    memo:document.getElementById('fm').value,
+  };
+
+  // GASに保存
+  const isEdit = editIdx!==null;
+  const payload = {
+    action: isEdit ? 'editVisit' : 'addVisit',
+    service: '居宅介護支援',
+    officeId: vid,
+    officeName: o.name,
+    ...rec,
+  };
+  if(isEdit && visits[vid] && visits[vid][editIdx]) {
+    payload.rowId = visits[vid][editIdx].rowId;
+  }
+
+  fetch(GAS_URL, {
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(()=>{
+    // ローカルにも反映
+    if(!visits[vid]) visits[vid]=[];
+    if(isEdit){
+      visits[vid][editIdx]={...rec, rowId:payload.rowId};
+      editIdx=null;
+    } else {
+      rec.rowId = Date.now().toString();
+      visits[vid].push(rec);
+    }
+    document.querySelector('.sh-title').textContent='✏️ 営業記録を追加';
+    closeVisit(); refreshM(vid); applyF();
+    if(curTab==='history') renderHistory();
+  }).catch(()=>{
+    // オフラインでもローカルに保存
+    if(!visits[vid]) visits[vid]=[];
+    if(isEdit){visits[vid][editIdx]=rec;editIdx=null;}
+    else{rec.rowId=Date.now().toString();visits[vid].push(rec);}
+    document.querySelector('.sh-title').textContent='✏️ 営業記録を追加';
+    closeVisit(); refreshM(vid); applyF();
+    if(curTab==='history') renderHistory();
+  });
+}
+
+function upCnt(){document.getElementById('cnt').textContent=offices.length+'件 / 全145件';}
+
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC_JFEj7OBk9PCOf8fCheAn0qgypiJCLcg&language=ja&region=JP&callback=initMap" async defer></script>
+</body>
+</html>
